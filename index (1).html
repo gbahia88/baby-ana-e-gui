@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menino ou Menina?</title>
+<style>
+:root{--bg:#fff8fb;--card:#fff;--txt:#3a3350;--mut:#7d7692;--blue:#4aa3f0;--pink:#f27bb0;--line:#eadff0}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(135deg,#e3f1fd,#fff8fb 45%,#fde4ef);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+main{max-width:520px;margin:0 auto;padding:28px 16px 40px}
+h1{text-align:center;font-size:2rem;margin:0 0 4px}
+h1 .b{color:var(--blue)}h1 .p{color:var(--pink)}
+.sub{text-align:center;color:var(--mut);margin:0 0 22px}
+.card{background:var(--card);border-radius:20px;padding:18px;margin-bottom:16px;box-shadow:0 4px 18px rgba(120,100,160,.12)}
+h2{font-size:1.05rem;margin:0 0 12px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{border:2px solid var(--line);border-radius:16px;padding:16px 8px;text-align:center;font-size:1.1rem;font-weight:700;background:#fff;color:var(--txt);cursor:pointer;font-family:inherit}
+.opt .e{display:block;font-size:2rem}
+.opt.m.sel{border-color:var(--blue);background:#e3f1fd}
+.opt.f.sel{border-color:var(--pink);background:#fde4ef}
+input,textarea{width:100%;border:2px solid var(--line);border-radius:12px;padding:12px;font:inherit;background:#fff;color:var(--txt);margin-bottom:10px}
+textarea{resize:vertical;min-height:70px}
+label{display:block;font-size:.9rem;color:var(--mut);margin-bottom:4px}
+.send{width:100%;border:0;border-radius:14px;padding:14px;font:inherit;font-weight:800;font-size:1.05rem;color:#fff;background:linear-gradient(90deg,var(--blue),var(--pink));cursor:pointer}
+.send:disabled{opacity:.5;cursor:default}
+.msg{text-align:center;color:var(--mut);font-size:.9rem;margin-top:8px;min-height:1.2em}
+.bar{display:flex;height:34px;border-radius:17px;overflow:hidden;background:var(--line);font-weight:800;color:#fff;font-size:.9rem}
+.bar div{display:flex;align-items:center;justify-content:center;transition:width .5s;white-space:nowrap;overflow:hidden}
+.bar .m{background:var(--blue)}.bar .f{background:var(--pink)}
+.tot{text-align:center;color:var(--mut);font-size:.85rem;margin-top:8px}
+ul{list-style:none;margin:0;padding:0}
+li{padding:10px 12px;border-radius:12px;margin-bottom:8px;border-left:5px solid var(--line);background:#f8f4fb}
+li.m{border-left-color:var(--blue)}li.f{border-left-color:var(--pink)}
+li b{display:block}li span{color:var(--mut);font-size:.9rem}
+.empty{color:var(--mut);text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <h1><span class="b">Menino</span> ou <span class="p">Menina?</span></h1>
+  <p class="sub">Vote, chute o nome e deixe um recado carinhoso 💙💗</p>
+
+  <section class="card">
+    <h2>1. Qual é o seu palpite?</h2>
+    <div class="opts">
+      <button class="opt m" data-v="menino" type="button"><span class="e">👶💙</span>Menino</button>
+      <button class="opt f" data-v="menina" type="button"><span class="e">👶💗</span>Menina</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Que nome você acha?</h2>
+    <label for="nome">Palpite de nome do bebê</label>
+    <input id="nome" maxlength="40" placeholder="Ex.: Miguel, Helena…">
+    <label for="quem">Seu nome</label>
+    <input id="quem" maxlength="40" placeholder="Como devemos te chamar?">
+    <label for="rec">Recado (opcional)</label>
+    <textarea id="rec" maxlength="300" placeholder="Deixe uma mensagem para o bebê e os papais"></textarea>
+    <button class="send" id="enviar" type="button">Enviar palpite</button>
+    <div class="msg" id="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>Placar da votação</h2>
+    <div class="bar"><div class="m" id="bm" style="width:50%"></div><div class="f" id="bf" style="width:50%"></div></div>
+    <div class="tot" id="tot">Carregando…</div>
+  </section>
+
+  <section class="card">
+    <h2>Palpites e recados</h2>
+    <ul id="lista"><li class="empty">Carregando…</li></ul>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+// ===== CONFIGURAÇÃO (cole os dados do seu projeto Supabase) =====
+const SUPABASE_URL = "https://yqugamxhlkmuxxpbuuap.supabase.co";
+const SUPABASE_KEY = "sb_publishable_MeCBGYj7XKmwkdh2-p_ASA_hqIX1rM8";
+// ================================================================
+
+const $ = i => document.getElementById(i);
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let escolha = null;
+
+const btns = document.querySelectorAll('.opt');
+btns.forEach(b => b.addEventListener('click', () => {
+  escolha = b.dataset.v;
+  btns.forEach(x => x.classList.toggle('sel', x === b));
+}));
+
+const jaVotou = () => { try { return localStorage.getItem('voto-bebe') === '1'; } catch (e) { return false; } };
+const marcar = () => { try { localStorage.setItem('voto-bebe', '1'); } catch (e) {} };
+
+function render(rows) {
+  let m = 0, f = 0;
+  const ul = $('lista');
+  ul.textContent = '';
+  rows.forEach(x => {
+    if (x.voto === 'menino') m++; else if (x.voto === 'menina') f++;
+    if (!(x.nome || x.recado)) return;
+    const li = document.createElement('li');
+    li.className = x.voto === 'menino' ? 'm' : 'f';
+    const b = document.createElement('b');
+    b.textContent = (x.nome ? '“' + x.nome + '”' : 'Sem palpite de nome') + ' — ' + (x.quem || 'Alguém especial');
+    li.appendChild(b);
+    if (x.recado) { const s = document.createElement('span'); s.textContent = x.recado; li.appendChild(s); }
+    ul.appendChild(li);
+  });
+  if (!ul.children.length) {
+    const e = document.createElement('li');
+    e.className = 'empty';
+    e.textContent = 'Seja a primeira pessoa a palpitar!';
+    ul.appendChild(e);
+  }
+  const t = m + f;
+  $('bm').style.width = (t ? m / t * 100 : 50) + '%';
+  $('bf').style.width = (t ? f / t * 100 : 50) + '%';
+  $('bm').textContent = m ? '💙 ' + m : '';
+  $('bf').textContent = f ? '💗 ' + f : '';
+  $('tot').textContent = t ? t + (t === 1 ? ' voto' : ' votos') + ' no total' : 'Nenhum voto ainda';
+}
+
+async function carregar() {
+  const { data, error } = await db.from('palpites').select('*').order('created_at', { ascending: false });
+  if (error) { $('tot').textContent = 'Não foi possível carregar os votos.'; return; }
+  render(data);
+}
+
+$('enviar').addEventListener('click', async () => {
+  const st = $('status'), btn = $('enviar');
+  if (jaVotou()) { st.textContent = 'Você já enviou seu palpite. Obrigado! 💕'; return; }
+  if (!escolha) { st.textContent = 'Escolha primeiro: menino ou menina.'; return; }
+  btn.disabled = true; st.textContent = 'Enviando…';
+  const { error } = await db.from('palpites').insert({
+    voto: escolha,
+    nome: $('nome').value.trim(),
+    quem: $('quem').value.trim(),
+    recado: $('rec').value.trim()
+  });
+  if (error) { btn.disabled = false; st.textContent = 'Não foi possível enviar. Tente novamente.'; return; }
+  marcar();
+  st.textContent = 'Palpite enviado! Obrigado 💕';
+  ['nome', 'quem', 'rec'].forEach(i => $(i).value = '');
+  carregar();
+});
+
+carregar();
+setInterval(carregar, 15000);
+</script>
+</body>
+</html>
